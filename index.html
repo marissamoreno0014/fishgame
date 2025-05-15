@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Spot the Scam - Fishing Edition</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to bottom, #87ceeb, #1e90ff);
+      overflow: hidden;
+    }
+    #game {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+    .fish {
+      position: absolute;
+      width: 320px; /* or your preferred fish size */
+      height: 180px;
+      background-image: url('fish.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      cursor: pointer;
+      animation-name: swim;
+      animation-timing-function: linear;
+      animation-fill-mode: forwards;
+    }
+
+    .speech-bubble {
+      position: absolute;
+      bottom: 65%; /* Adjust this to control vertical position */
+      left: -110%; /* Adjust this to control horizontal position */
+      max-width: 140px; /* Control bubble width */
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.9); /* Semi-transparent white bg */
+      color: #222;
+      font-weight: bold;
+      font-size: 14px;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      text-align: left;
+      user-select: none;
+      pointer-events: none;
+
+      /* Positioning context for the triangle */
+      z-index: 10;
+    }
+
+    /* Triangle on bottom right */
+    .speech-bubble::after {
+      content: "";
+      position: absolute;
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: 10px 0 0 10px; /* Triangle shape */
+      border-color: transparent transparent transparent rgba(255, 255, 255, 0.9);
+      bottom: 0;
+      right: 8px; /* distance from right edge of bubble */
+      z-index: 11;
+    }
+
+    @keyframes swim {
+      from {
+        left: -150px;
+      }
+      to {
+        left: 110vw;
+      }
+    }
+
+    #timer {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 24px;
+      font-weight: bold;
+      background: #ffeb99;
+      padding: 10px 25px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      max-width: 200px;
+      text-align: center;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .fish {
+      position: absolute;
+      width: 120px;
+      cursor: pointer;
+      animation-name: swim;
+      animation-timing-function: linear;
+      animation-fill-mode: forwards;
+    }
+
+    #feedback,
+    #score,
+    #round {
+      position: absolute;
+      left: 10px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 5px;
+      margin: 5px;
+    }
+    #score {
+      top: 10px;
+    }
+    #round {
+      top: 60px;
+    }
+    #feedback {
+      top: 110px;
+      max-width: 400px;
+    }
+    #timeout-message {
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 48px;
+      font-weight: bold;
+      color: red;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="game">
+    <div id="score">Score: 0</div>
+    <div id="round">Round: 1</div>
+    <div id="feedback">Click on fish you think are scams!</div>
+    <div id="timer">Time left: 55s</div>
+    <div id="timeout-message">⏰ Time's Up!</div>
+    <audio id="ding-sound" src="ding.mp3" preload="auto"></audio>
+  </div>
+  
+  <script>
+    
+    const scamFish = [
+      // Scam entries (10)
+      {
+        text: "You've won a free cruise!",
+        scam: true,
+        explanation:
+          "This is a scam tactic. Scammers often lure victims with fake prizes or vacations.",
+      },
+      {
+        text: "Update your bank info here",
+        scam: true,
+        explanation:
+          "Never update sensitive information through unsolicited messages or links.",
+      },
+      {
+        text: "Friend sent a video - click!",
+        scam: true,
+        explanation: "This is a phishing trick. Random video links may install malware.",
+      },
+      {
+        text: "Your grandson is in jail!",
+        scam: true,
+        explanation:
+          "Grandparent scams are emotionally manipulative. Always verify first.",
+      },
+      {
+        text: "Social Security suspended!",
+        scam: true,
+        explanation:
+          "The government doesn't suspend your SSN — this is a known scam.",
+      },
+      {
+        text: "Get your COVID money refund",
+        scam: true,
+        explanation: "Fake COVID relief offers are a common scam trick.",
+      },
+      {
+        text: "Win a brand new iPhone!",
+        scam: true,
+        explanation: "Fake giveaways are often scams to steal your info.",
+      },
+      {
+        text: "Your account will be closed soon",
+        scam: true,
+        explanation: "Urgent account warnings are a common phishing tactic.",
+      },
+      {
+        text: "Congratulations, you’re a lottery winner!",
+        scam: true,
+        explanation:
+          "Lottery scams often try to get you to send money to claim prizes.",
+      },
+      {
+        text: "Click to reset your password",
+        scam: true,
+        explanation:
+          "Phishing emails try to steal your login credentials with fake links.",
+      },
+
+      // Non-scam entries (10)
+      {
+        text: "Join our pet photo contest!",
+        scam: false,
+        explanation:
+          "This could be real — especially if it's a known organization.",
+      },
+      {
+        text: "Here's your Amazon receipt",
+        scam: false,
+        explanation:
+          "It could be legitimate — especially if you actually ordered something.",
+      },
+      {
+        text: "Can I borrow $500?",
+        scam: false,
+        explanation: "This could be from a real friend asking for help.",
+      },
+      {
+        text: "Special offer from your bank",
+        scam: false,
+        explanation: "Could be legitimate if you recognize the sender.",
+      },
+      {
+        text: "Your package is delayed",
+        scam: false,
+        explanation: "Legitimate shipping updates often come from real couriers.",
+      },
+      {
+        text: "Join our community survey",
+        scam: false,
+        explanation: "Some surveys are legitimate for market research.",
+      },
+      {
+        text: "Friend tagged you in a photo",
+        scam: false,
+        explanation: "Usually a normal social media notification.",
+      },
+      {
+        text: "Meeting scheduled for tomorrow",
+        scam: false,
+        explanation: "Normal calendar notification, not a scam.",
+      },
+      {
+        text: "Your electricity bill is ready",
+        scam: false,
+        explanation:
+          "Legitimate utility notifications come directly from your provider.",
+      },
+      {
+        text: "Your subscription has been renewed",
+        scam: false,
+        explanation: "Valid renewal notice from a service you use.",
+      },
+    ];
+
+    let roundNum = 0;
+    let score = 0;
+    const maxRounds = 5;
+    let roundResults = [];
+    let currentFish = [];
+
+    const maxPoints = 5; // Number of points needed to win
+let clickedScamThisRound = 0; // Count scam fish clicked this round
+
+    const game = document.getElementById("game");
+    const feedback = document.getElementById("feedback");
+    const scoreDisplay = document.getElementById("score");
+    const roundDisplay = document.getElementById("round");
+    const timerDisplay = document.getElementById("timer");
+    const timeoutMessage = document.getElementById("timeout-message");
+    const dingSound = document.getElementById("ding-sound");
+
+    let usedScamFishIndices = new Set();
+    let usedNonScamFishIndices = new Set();
+
+    function shuffle(array) {
+      return array.sort(() => Math.random() - 0.5);
+    }
+
+    let roundTimer = null; // Global timer reference
+    
+    function startRound() {
+      roundNum++;
+      if (roundNum > maxRounds) {
+        // After all rounds done, repeat wrong rounds
+        repeatWrongRounds();
+        return;
+      }
+
+      // Clear previous timer
+      if (roundTimer) clearInterval(roundTimer);
+
+      roundDisplay.textContent = "Round: " + roundNum;
+      feedback.textContent = "Click on fish you think are scams!";
+      timerDisplay.textContent = "Time left: 55s";
+      timeoutMessage.style.display = "none";
+      game.querySelectorAll(".fish").forEach((f) => f.remove());
+
+      // Get all scam and non-scam fish indices
+      const scamIndices = scamFish
+        .map((f, i) => (f.scam ? i : null))
+        .filter((i) => i !== null);
+      const nonScamIndices = scamFish
+        .map((f, i) => (!f.scam ? i : null))
+        .filter((i) => i !== null);
+
+      // Filter out fish already used in previous rounds (except failed rounds)
+      const availableScamIndices = scamIndices.filter(
+        (i) => !usedScamFishIndices.has(i)
+      );
+      const availableNonScamIndices = nonScamIndices.filter(
+        (i) => !usedNonScamFishIndices.has(i)
+      );
+
+      // We need exactly 2 scam and 2 non-scam per round
+      if (
+        availableScamIndices.length < 2 ||
+        availableNonScamIndices.length < 2
+      ) {
+        // Not enough new fish, reset used sets (except current round)
+        usedScamFishIndices.clear();
+        usedNonScamFishIndices.clear();
+        startRound();
+        return;
+      }
+
+      // Pick 2 scam and 2 non-scam randomly from available pools
+      const selectedScamIndices = shuffle(availableScamIndices).slice(0, 2);
+      const selectedNonScamIndices = shuffle(availableNonScamIndices).slice(0, 2);
+
+      // Mark these fish as used
+      selectedScamIndices.forEach((i) => usedScamFishIndices.add(i));
+      selectedNonScamIndices.forEach((i) => usedNonScamFishIndices.add(i));
+
+      // Compose current round fish array
+      currentFish = [...selectedScamIndices, ...selectedNonScamIndices].map(
+        (i) => ({
+          ...scamFish[i],
+          index: i,
+          clicked: false,
+        })
+      );
+
+      // Shuffle current fish array so scam and non-scam are mixed
+      currentFish = shuffle(currentFish);
+
+      // Create fish elements
+      createFishElements(currentFish);
+
+      // Start the 55-second timer for this round
+      let timeLeft = 55;
+      timerDisplay.textContent = "Time left: " + timeLeft + "s";
+
+      roundTimer = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = "Time left: " + timeLeft + "s";
+        if (timeLeft <= 0) {
+          clearInterval(roundTimer);
+          onTimeout();
+        }
+      }, 1000);
+    }
+
+    function createFishElements(fishArray) {
+      fishArray.forEach((fish, idx) => {
+        const fishElem = document.createElement("div");
+        fishElem.classList.add("fish");
+        fishElem.style.top = `${20 + idx * 20}%`;
+        fishElem.style.left = "-150px"; // start left outside view
+
+        // Assign swim animation duration and delay
+        const duration = 20 + Math.random() * 15; // 20-35 seconds
+        const delay = Math.random() * 10;
+        fishElem.style.animationDuration = `${duration}s`;
+        fishElem.style.animationDelay = `${delay}s`;
+
+        // Add speech bubble
+        const bubble = document.createElement("div");
+        bubble.classList.add("speech-bubble");
+        bubble.textContent = fish.text;
+        fishElem.appendChild(bubble);
+
+        fishElem.addEventListener("click", () => {
+          if (fish.clicked) return; // Ignore repeated clicks
+          fish.clicked = true;
+          onFishClick(fish, fishElem);
+        });
+
+        game.appendChild(fishElem);
+      });
+    }
+
+    function onFishClick(fish, fishElem) {
+      dingSound.currentTime = 0;
+      dingSound.play();
+
+      if (fish.scam) {
+        score++;
+        feedback.textContent = "Correct! " + fish.explanation;
+      } else {
+        feedback.textContent = "Oops! That was NOT a scam. " + fish.explanation;
+      }
+
+      scoreDisplay.textContent = "Score: " + score + "/10";
+
+      // Mark this fish as clicked visually
+      fishElem.style.opacity = "0.5";
+      fishElem.style.pointerEvents = "none";
+
+      // Check if all scam fish clicked
+      const remainingScam = currentFish.filter(
+        (f) => f.scam && !f.clicked
+      ).length;
+
+      if (remainingScam === 0) {
+        // Round complete successfully
+        clearInterval(roundTimer);
+        roundResults.push(true);
+        setTimeout(() => {
+          if (roundNum < maxRounds) {
+            startRound();
+          } else {
+            repeatWrongRounds();
+          }
+        }, 2000);
+      }
+    }
+
+    function onTimeout() {
+      feedback.textContent =
+        "Time's up! You didn't find all the scam fish in time.";
+      timeoutMessage.style.display = "block";
+
+      // Mark this round as failed
+      roundResults.push(false);
+
+      // Clear current fish and allow retry after 4 seconds
+      game.querySelectorAll(".fish").forEach((f) => f.remove());
+      setTimeout(() => {
+        timeoutMessage.style.display = "none";
+        startRound();
+      }, 4000);
+    }
+    
+    function repeatWrongRounds() {
+      // Filter rounds where user failed (false)
+      const failedRoundsCount = roundResults.filter((r) => !r).length;
+
+      if (failedRoundsCount === 0) {
+        // All rounds passed, game over
+        feedback.textContent = "Great job! You completed all rounds!";
+        timerDisplay.textContent = "";
+        roundDisplay.textContent = "";
+        return;
+      }
+
+      // Reset round number and used fish tracking for repeats
+      roundNum = 0;
+      roundResults = [];
+
+      // Clear used sets to allow repeating fish for retry
+      usedScamFishIndices.clear();
+      usedNonScamFishIndices.clear();
+
+      feedback.textContent =
+        "Let's try the rounds you missed again. Focus and catch those scams!";
+
+      setTimeout(() => {
+        startRound();
+      }, 3000);
+    }
+
+    // Start the game on page load
+    startRound();
+  </script>
+</body>
+</html>
